@@ -1,0 +1,234 @@
+import express from 'express';
+import mysql from 'mysql';
+import cors from 'cors';
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+const db = mysql.createConnection({
+    host: 'localhost',
+    user: 'root',
+    password: '',
+    database: 'review'
+});
+
+db.connect((err) => {
+    if (err) {
+        console.error('Error connecting to database:', err);
+        return;
+    }
+    console.log('Connected to MySQL database');
+});
+app.post('/login', (req, res) => {
+    const sql = "SELECT * FROM user WHERE UserName = ? AND Password = ?";
+    db.query(sql, [req.body.UserName, req.body.Password], (err, result) => {
+        if (err) return res.json({ Message: "Error inside server" });
+        if (result.length > 0) {
+            return res.json({ Login: true });
+        } else {
+            return res.json({ Login: false });
+        }
+    });
+});
+
+app.post('/room', (req, res) => {
+    const sql = "INSERT INTO `room` (`Class_id`, `Class_Name`, `Room_Number`, `subject_id`) VALUES (?, ?, ?, ?)";
+    const values = [
+        req.body.Class_id,
+        req.body.Class_Name,
+        req.body.Room_Number,
+        req.body.Subject_id  // Changed from 'Subject' to 'Subject_id' to match your frontend state
+    ];
+    
+    db.query(sql, values, (err, result) => {  // Changed from [values] to just values
+        if(err) {
+            console.log(err);
+            return res.json(err);
+        }
+        return res.json(result);
+    });
+});
+app.get('/room',(req,res)=>{
+    const sql="SELECT * FROM room UNLIMIT;"
+    db.query(sql,(err,result)=>{
+        if(err){
+            console.log(err)
+            return res.json(err)
+        }
+        return res.json(result)
+    })
+})
+app.delete('/room/:id', (req, res) => {
+    const sql = "DELETE FROM `room` WHERE Class_id = ?";
+    const classId = req.params.id;
+    
+    db.query(sql, [classId], (err, result) => {
+        if(err) {
+            console.log(err);
+            return res.json(err);
+        }
+        return res.json(result);
+    });
+});
+// PUT endpoint for updating room records
+app.put('/room/:id', (req, res) => {
+    const { id } = req.params;
+    const { Class_Name, Room_Number, Subject_id } = req.body;
+    
+    const sql = "UPDATE room SET Class_Name = ?, Room_Number = ?, Subject_id = ? WHERE Class_id = ?";
+    const values = [Class_Name, Room_Number, Subject_id, id];
+    
+    db.query(sql, values, (err, result) => {
+        if (err) {
+            console.error("Error updating record:", err);
+            return res.status(500).json({ error: "Failed to update record" });
+        }
+        
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: "Record not found" });
+        }
+        
+        return res.json({ message: "Record updated successfully", id });
+    });
+});
+
+app.post('/subject',(req,res)=>{
+    const sql="INSERT INTO `subject`(`Subject_id`, `Subject_Name`, `Teacher_id`) VALUES (?,?,?)"
+    const values=[
+        req.body.Subject_id,
+        req.body.Subject_Name,
+        req.body.Teacher_id
+    ]
+
+   db.query(sql, values, (err, result) => {
+    if (err) {
+        console.log(err);
+        return res.status(500).json({ error: err.message });
+    }
+    return res.json(result);
+});
+})
+app.get('/subject',(req,res)=>{
+    const sql="SELECT * FROM subject"
+    db.query(sql,(err,result)=>{
+        if(err){
+            console.log(err)
+            return res.json(err)
+        }
+        return res.json(result)
+    })
+})
+
+app.put('/subject/:id', (req, res) => {
+    const { id } = req.params;
+    const { Subject_Name, Teacher_id } = req.body;
+    
+    const sql = "UPDATE `subject` SET `Subject_Name`=?, `Teacher_id`=? WHERE `Subject_id`=?";
+    const values = [Subject_Name, Teacher_id, id];  // Removed duplicate Subject_id
+    
+    db.query(sql, values, (err, result) => {
+        if (err) {
+            console.error("Error updating record:", err);
+            return res.status(500).json({ error: "Failed to update record" });
+        }
+        
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: "Record not found" });
+        }
+        
+        return res.json({ message: "Record updated successfully", id });
+    });
+});
+app.delete('/subject/:id', (req, res) => {
+    const sql = 'DELETE FROM `subject` WHERE Subject_id = ?'
+    const subject_id = req.params.id
+    db.query(sql, subject_id, (err, result) => {
+        if (err) {
+            console.log(err)
+            return res.json(err)  
+        }
+        return res.json(result) 
+    })
+})
+app.post('/teacher',(req,res)=>{
+    const sql="INSERT INTO `teacher`(`Teacher_id`, `Teacher_Name`, `Gender`, `Phone`) VALUES (?,?,?,?)"
+    const values=[
+        req.body.Teacher_id,
+        req.body.Teacher_Name,
+        req.body.Gender,
+        req.body.Phone
+
+    ]
+    db.query(sql,values,(err,result)=>{
+        if(err){
+            console.log(err)
+            return res.json(err)
+        }
+        return res.json(result)
+    })
+})
+app.get('/teacher',(req,res)=>{
+    const sql="SELECT * FROM teacher"
+    db.query(sql,(err,result)=>{
+        if(err){
+            console.log(err)
+            return res.json(err)
+        }
+        return res.json(result)
+    })
+})
+app.delete('/teacher/:id', (req, res) => {
+    const Teacher_id = req.params.id;
+    const sql = "DELETE FROM teacher WHERE Teacher_id = ?"; // Added WHERE clause
+    db.query(sql, [Teacher_id], (err, result) => {
+        if (err) {
+            console.log(err);
+            return res.json(err);
+        }
+        return res.json(result);
+    });
+});
+app.put('/teacher/:id', (req, res) => {
+    const { id } = req.params;
+    const { Teacher_Name, Gender,Phone } = req.body;
+    
+    const sql = "UPDATE `teacher` SET `Teacher_Name`=?,`Gender`=?,`Phone`=? WHERE Teacher_id=?";
+    const values = [Teacher_Name, Gender,Phone, id];  // Removed duplicate Subject_id
+    
+    db.query(sql, values, (err, result) => {
+        if (err) {
+            console.error("Error updating record:", err);
+            return res.status(500).json({ error: "Failed to update record" });
+        }
+        
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: "Record not found" });
+        }
+        
+        return res.json({ message: "Record updated successfully", id });
+    });
+});
+app.get('/finalreport', (req, res) => {
+    const query= `
+        SELECT 
+            r.Class_id, 
+            r.Class_Name, 
+            r.Room_Number, 
+            r.Subject_id, 
+            s.Subject_Name, 
+            t.Teacher_id, 
+            t.Teacher_Name, 
+            t.Gender, 
+            t.Phone 
+        FROM 
+            room r
+        LEFT JOIN 
+            subject s ON r.Subject_id = s.Subject_id
+        LEFT JOIN 
+            teacher t ON s.Teacher_id = t.Teacher_id
+    `});
+ 
+app.listen(8081, () => {
+    console.log("The server is running on port 8081");
+});
